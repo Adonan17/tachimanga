@@ -21,12 +21,15 @@ jobs:
           import json
           import urllib.request
 
-          URL = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json"
+          BASE = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/"
+          URL = BASE + "index.min.json"
 
           KEEP = {
-              "MangaFire",
-              "Sushi-Scan",
-              "ReadComicOnline"
+              "mangafire",
+              "sushiscan",
+              "sushi-scan",
+              "readcomiconline",
+              "read comic online"
           }
 
           with urllib.request.urlopen(URL) as r:
@@ -35,8 +38,11 @@ jobs:
           filtered = []
 
           for ext in data:
-              names = {source.get("name") for source in ext.get("sources", [])}
-              if names & KEEP:
+              text = json.dumps(ext).lower().replace(" ", "")
+              if any(k.replace(" ", "") in text for k in KEEP):
+                  apk = ext.get("apk", "")
+                  if apk and not apk.startswith("http"):
+                      ext["apk"] = BASE + apk
                   filtered.append(ext)
 
           with open("index.min.json", "w", encoding="utf-8") as f:
