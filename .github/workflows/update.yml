@@ -1,0 +1,54 @@
+name: Update Tachimanga Repo
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */12 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate filtered repo
+        run: |
+          python << 'EOF'
+          import json
+          import urllib.request
+
+          URL = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json"
+
+          KEEP = {
+              "MangaFire",
+              "Sushi-Scan",
+              "ReadComicOnline"
+          }
+
+          with urllib.request.urlopen(URL) as r:
+              data = json.load(r)
+
+          filtered = []
+
+          for ext in data:
+              names = {source.get("name") for source in ext.get("sources", [])}
+              if names & KEEP:
+                  filtered.append(ext)
+
+          with open("index.min.json", "w", encoding="utf-8") as f:
+              json.dump(filtered, f, ensure_ascii=False, separators=(",", ":"))
+
+          print(f"Saved {len(filtered)} extensions")
+          EOF
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add index.min.json
+          git diff --staged --quiet || git commit -m "Update Tachimanga repo"
+          git push
