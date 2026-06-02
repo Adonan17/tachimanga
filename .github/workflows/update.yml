@@ -16,58 +16,41 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate filtered repository
+      - name: Generate filtered index
         run: |
-          python << 'EOF'
+          python3 - <<'EOF'
           import json
           import urllib.request
 
           INDEX_URL = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json"
-          APK_BASE = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/apk/"
+          APK_BASE  = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/apk/"
 
-          KEEP = {
-              "MangaFire",
-              "Sushi-Scan",
-              "ReadComicOnline"
-          }
+          KEEP = {"MangaFire", "Sushi-Scan", "ReadComicOnline"}
 
-          with urllib.request.urlopen(INDEX_URL) as response:
-              data = json.load(response)
+          with urllib.request.urlopen(INDEX_URL) as resp:
+              data = json.load(resp)
 
           filtered = []
-
           for ext in data:
-              source_names = {
-                  source.get("name", "")
-                  for source in ext.get("sources", [])
-              }
-
-              if source_names & KEEP:
+              names = {s.get("name", "") for s in ext.get("sources", [])}
+              if names & KEEP:
                   apk = ext.get("apk", "")
-
                   if apk and not apk.startswith("http"):
                       ext["apk"] = APK_BASE + apk
-
                   filtered.append(ext)
 
           with open("index.min.json", "w", encoding="utf-8") as f:
-              json.dump(
-                  filtered,
-                  f,
-                  ensure_ascii=False,
-                  separators=(",", ":")
-              )
+              json.dump(filtered, f, ensure_ascii=False, separators=(",", ":"))
 
-          print(f"Saved {len(filtered)} extensions")
+          for ext in filtered:
+              print(ext["name"], ext["version"])
+          print(f"\nTotal: {len(filtered)} extensions")
           EOF
 
-      - name: Commit changes
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
           git add index.min.json
-
-          git diff --staged --quiet || git commit -m "Update repository"
-
+          git diff --staged --quiet || git commit -m "Update Tachimanga repo"
           git push
