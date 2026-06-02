@@ -20,34 +20,33 @@ jobs:
           python << 'EOF'
           import json
           import urllib.request
-
-          BASE = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/"
-          URL = BASE + "index.min.json"
-
+          
+          BASE_INDEX = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/"
+          BASE_APK = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/apk/"
+          URL = BASE_INDEX + "index.min.json"
+          
           KEEP = {
-              "mangafire",
-              "sushiscan",
-              "sushi-scan",
-              "readcomiconline",
-              "read comic online"
+              "MangaFire",
+              "Sushi-Scan",
+              "ReadComicOnline"
           }
-
+          
           with urllib.request.urlopen(URL) as r:
               data = json.load(r)
-
+          
           filtered = []
-
+          
           for ext in data:
-              text = json.dumps(ext).lower().replace(" ", "")
-              if any(k.replace(" ", "") in text for k in KEEP):
+              names = {source.get("name") for source in ext.get("sources", [])}
+              if names & KEEP:
                   apk = ext.get("apk", "")
                   if apk and not apk.startswith("http"):
-                      ext["apk"] = BASE + apk
+                      ext["apk"] = BASE_APK + apk
                   filtered.append(ext)
-
+          
           with open("index.min.json", "w", encoding="utf-8") as f:
               json.dump(filtered, f, ensure_ascii=False, separators=(",", ":"))
-
+          
           print(f"Saved {len(filtered)} extensions")
           EOF
 
