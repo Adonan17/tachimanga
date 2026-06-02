@@ -13,40 +13,51 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Generate filtered repo
+      - name: Generate filtered repository
         run: |
           python << 'EOF'
           import json
           import urllib.request
-          
-          BASE_INDEX = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/"
-          BASE_APK = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/apk/"
-          URL = BASE_INDEX + "index.min.json"
-          
+
+          INDEX_URL = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json"
+          APK_BASE = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/apk/"
+
           KEEP = {
               "MangaFire",
               "Sushi-Scan",
               "ReadComicOnline"
           }
-          
-          with urllib.request.urlopen(URL) as r:
-              data = json.load(r)
-          
+
+          with urllib.request.urlopen(INDEX_URL) as response:
+              data = json.load(response)
+
           filtered = []
-          
+
           for ext in data:
-              names = {source.get("name") for source in ext.get("sources", [])}
-              if names & KEEP:
+              source_names = {
+                  source.get("name", "")
+                  for source in ext.get("sources", [])
+              }
+
+              if source_names & KEEP:
                   apk = ext.get("apk", "")
+
                   if apk and not apk.startswith("http"):
-                      ext["apk"] = BASE_APK + apk
+                      ext["apk"] = APK_BASE + apk
+
                   filtered.append(ext)
-          
+
           with open("index.min.json", "w", encoding="utf-8") as f:
-              json.dump(filtered, f, ensure_ascii=False, separators=(",", ":"))
-          
+              json.dump(
+                  filtered,
+                  f,
+                  ensure_ascii=False,
+                  separators=(",", ":")
+              )
+
           print(f"Saved {len(filtered)} extensions")
           EOF
 
@@ -54,6 +65,9 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+
           git add index.min.json
-          git diff --staged --quiet || git commit -m "Update Tachimanga repo"
+
+          git diff --staged --quiet || git commit -m "Update repository"
+
           git push
